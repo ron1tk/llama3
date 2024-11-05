@@ -78,7 +78,7 @@ class TestGenerator:
         return frameworks.get(language, 'unknown')
 
     def create_prompt(self, file_name: str, language: str) -> Optional[str]:
-        """Create a language-specific prompt for test generation, incorporating additional instructions."""
+        """Create a language-specific prompt for test generation without instructions to use mocking."""
         try:
             with open(file_name, 'r', encoding='utf-8') as f:
                 code_content = f.read()
@@ -88,23 +88,22 @@ class TestGenerator:
 
         framework = self.get_test_framework(language)
         
-        # Base prompt
+        # Base prompt without mocking instructions
         prompt = f"""Generate comprehensive unit tests for the following {language} code using {framework}.
 
-Requirements:
-1. Include edge cases, normal cases, and error cases
-2. Use mocking where appropriate for external dependencies
-3. Include setup and teardown if needed
-4. Add descriptive test names and docstrings
-5. Follow {framework} best practices
-6. Ensure high code coverage
-7. Test both success and failure scenarios
+    Requirements:
+    1. Include edge cases, normal cases, and error cases
+    2. Include setup and teardown if needed
+    3. Add descriptive test names and docstrings
+    4. Follow {framework} best practices
+    5. Ensure high code coverage
+    6. Test both success and failure scenarios
 
-Code to test:
+    Code to test:
 
-{code_content}
+    {code_content}
 
-Generate only the test code without any explanations or notes."""
+    Generate only the test code without any explanations or notes."""
         
         # Incorporate additional instructions from configuration
         additional_instructions = self.prompt_config.get('additional_instructions', '')
@@ -116,13 +115,13 @@ Generate only the test code without any explanations or notes."""
         if test_case_style:
             prompt += f"\n\nAdditional Instructions:\n- {test_case_style}"
         
-        # Handle mocking preference
-        include_mocking = self.prompt_config.get('include_mocking', False)
-        if include_mocking:
-            prompt += "\n- Ensure that external dependencies are properly mocked where applicable."
+        # Remove the mocking preference handling
+        # Since we are removing mocking, we don't need to handle include_mocking
+        # If the include_mocking key exists in the configuration, it will be ignored
         
         logging.info(f"Created prompt for {language} using {framework}. Length: {len(prompt)} characters")
         return prompt
+
 
     def call_openai_api(self, prompt: str) -> Optional[str]:
         """Call OpenAI API to generate test cases."""
@@ -144,7 +143,7 @@ Generate only the test code without any explanations or notes."""
                 }
             ],
             'max_tokens': self.max_tokens,
-            'temperature': 0.7  # Balance between creativity and consistency
+            'temperature': 0.4  # Balance between creativity and consistency
         }
 
         try:
