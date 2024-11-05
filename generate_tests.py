@@ -9,8 +9,8 @@ from typing import List, Optional, Dict, Any
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+   level=logging.INFO,
+   format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
 class TestGenerator:
@@ -23,11 +23,28 @@ class TestGenerator:
         except ValueError:
             logging.error("Invalid value for OPENAI_MAX_TOKENS. Using default value: 2000")
             self.max_tokens = 2000
-
-
         
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is not set")
+        
+        # Load prompt configuration if available
+        self.prompt_config = self.load_prompt_config()
+
+    def load_prompt_config(self) -> Dict[str, Any]:
+        """Load additional prompt instructions from a configuration file."""
+        config_path = Path('prompt_config.json')
+        if config_path.exists():
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                logging.info("Loaded prompt configuration.")
+                return config
+            except Exception as e:
+                logging.error(f"Error loading prompt configuration: {e}")
+                return {}
+        else:
+            logging.info("No prompt configuration file found. Using default prompts.")
+            return {}
 
     def get_changed_files(self) -> List[str]:
         """Retrieve list of changed files passed as command-line arguments."""
@@ -61,9 +78,9 @@ class TestGenerator:
         return frameworks.get(language, 'unknown')
 
     def create_prompt(self, file_name: str, language: str) -> Optional[str]:
-        """Create a language-specific prompt for test generation."""
+        """Create a language-specific prompt for test generation, incorporating additional instructions."""
         try:
-            with open(file_name, 'r') as f:
+            with open(file_name, 'r', encoding='utf-8') as f:
                 code_content = f.read()
         except Exception as e:
             logging.error(f"Error reading file {file_name}: {e}")
@@ -71,6 +88,7 @@ class TestGenerator:
 
         framework = self.get_test_framework(language)
         
+        # Base prompt
         prompt = f"""Generate comprehensive unit tests for the following {language} code using {framework}.
 
 Requirements:
@@ -87,7 +105,22 @@ Code to test:
 {code_content}
 
 Generate only the test code without any explanations or notes."""
-
+        
+        # Incorporate additional instructions from configuration
+        additional_instructions = self.prompt_config.get('additional_instructions', '')
+        if additional_instructions:
+            prompt = f"{additional_instructions}\n\n{prompt}"
+        
+        # Incorporate test case style if specified
+        test_case_style = self.prompt_config.get('test_case_style', '')
+        if test_case_style:
+            prompt += f"\n\nAdditional Instructions:\n- {test_case_style}"
+        
+        # Handle mocking preference
+        include_mocking = self.prompt_config.get('include_mocking', False)
+        if include_mocking:
+            prompt += "\n- Ensure that external dependencies are properly mocked where applicable."
+        
         logging.info(f"Created prompt for {language} using {framework}. Length: {len(prompt)} characters")
         return prompt
 

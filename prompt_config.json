@@ -1,0 +1,6 @@
+{
+    "additional_instructions": "Ensure that all edge cases are covered and include tests for boundary conditions.",
+    "test_case_style": "Follow the Arrange-Act-Assert pattern for clarity.",
+    "include_mocking": true
+  }
+  
